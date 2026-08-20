@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -45,9 +46,16 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}
 	defer file.Close()
 	
-	mediaType := header.Header.Get("Content-Type")	
+	mediaType, _, err := mime.ParseMediaType(header.Header.Get("Content-Type"))	
 	if mediaType == "" {
 		respondWithError(w, http.StatusBadRequest, "No media type", nil)
+		return
+	}
+
+	fmt.Println("Params=================", mediaType)
+
+	if mediaType != "image/png" && mediaType != "image/jpeg" {
+		respondWithError(w, http.StatusBadRequest, "File type not supported", err)
 		return
 	}
 
@@ -59,10 +67,6 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// base64Data := base64.StdEncoding.EncodeToString(imageData)
-	// dataUrl := fmt.Sprintf("data:%v;base64,%v",mediaType, base64Data)
-
-	// fmt.Println("dnsffffffffffffffffffffffffffffffffffff",strings.Split(mediaType, "/")[1])
 	fileExtension := strings.Split(mediaType, "/")[1]
 	directoryPathUrl := filepath.Join(cfg.assetsRoot,"/",videoID.String()+"."+fileExtension )
 	fmt.Println("directoryPathUrl================", directoryPathUrl)
