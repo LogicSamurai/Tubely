@@ -1,10 +1,12 @@
 package main
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
 	"github.com/google/uuid"
@@ -49,7 +51,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	imageData, err := io.ReadAll(file)
+	// imageData, err := io.ReadAll(file)
 	videoMetadata, err := cfg.db.GetVideo(videoID)
 
 	if userID != videoMetadata.UserID {
@@ -57,8 +59,22 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	base64Data := base64.StdEncoding.EncodeToString(imageData)
-	dataUrl := fmt.Sprintf("data:%v;base64,%v",mediaType, base64Data)
+	// base64Data := base64.StdEncoding.EncodeToString(imageData)
+	// dataUrl := fmt.Sprintf("data:%v;base64,%v",mediaType, base64Data)
+
+	// fmt.Println("dnsffffffffffffffffffffffffffffffffffff",strings.Split(mediaType, "/")[1])
+	fileExtension := strings.Split(mediaType, "/")[1]
+	directoryPathUrl := filepath.Join(cfg.assetsRoot,"/",videoID.String()+"."+fileExtension )
+	fmt.Println("directoryPathUrl================", directoryPathUrl)
+	directoryPath, err := os.Create(directoryPathUrl)
+	_ , err = io.Copy(directoryPath, file)
+
+	if err != nil {
+		respondWithError(w, http.StatusServiceUnavailable, "Service Unavailable right now", err)
+		return
+	}
+	
+	dataUrl := fmt.Sprintf("http://localhost:%v/assets/%v.%v", cfg.port, videoID, fileExtension)
 	videoMetadata.ThumbnailURL = &dataUrl
 
 	err = cfg.db.UpdateVideo(videoMetadata)
