@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"mime"
@@ -68,7 +70,15 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 	}
 
 	fileExtension := strings.Split(mediaType, "/")[1]
-	directoryPathUrl := filepath.Join(cfg.assetsRoot,"/",videoID.String()+"."+fileExtension )
+	newVideoId := make([]byte, 32)
+	rand.Read(newVideoId)
+	fmt.Println("NEW VIDEO ID -----------------", newVideoId)
+	if err != nil {
+		respondWithError(w,http.StatusInternalServerError, "VideoId generation failed", err)
+		return
+	}
+	newVideoIdUrl := base64.RawURLEncoding.EncodeToString(newVideoId)
+	directoryPathUrl := filepath.Join(cfg.assetsRoot,"/",newVideoIdUrl+"."+fileExtension )
 	fmt.Println("directoryPathUrl================", directoryPathUrl)
 	directoryPath, err := os.Create(directoryPathUrl)
 	_ , err = io.Copy(directoryPath, file)
@@ -78,7 +88,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	
-	dataUrl := fmt.Sprintf("http://localhost:%v/assets/%v.%v", cfg.port, videoID, fileExtension)
+	dataUrl := fmt.Sprintf("http://localhost:%v/assets/%v.%v", cfg.port, newVideoIdUrl, fileExtension)
 	videoMetadata.ThumbnailURL = &dataUrl
 
 	err = cfg.db.UpdateVideo(videoMetadata)
