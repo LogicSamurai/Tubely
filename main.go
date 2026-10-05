@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -101,6 +102,7 @@ func main() {
 		s3Region:         s3Region,
 		s3CfDistribution: s3CfDistribution,
 		port:             port,
+		s3Client:        s3Client,
 	}
 
 	err = cfg.ensureAssetsDir()
@@ -129,6 +131,14 @@ func main() {
 	mux.HandleFunc("DELETE /api/videos/{videoID}", cfg.handlerVideoMetaDelete)
 
 	mux.HandleFunc("POST /admin/reset", cfg.handlerReset)
+
+
+	// ratio, err := getVideoAspectRatio("samples/boots-video-vertical.mp4")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// log.Println("Aspect ratio:", ratio)
+
 
 	srv := &http.Server{
 		Addr:    ":" + port,
