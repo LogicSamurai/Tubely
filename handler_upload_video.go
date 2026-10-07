@@ -8,13 +8,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/auth"
-	"github.com/bootdotdev/learn-file-storage-s3-golang-starter/internal/database"
 	"github.com/google/uuid"
 )
 
@@ -124,41 +121,10 @@ func (cfg *apiConfig) handlerUploadVideo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// videoMetadata.VideoURL = aws.String(fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", cfg.s3Bucket, cfg.s3Region, key))
-	videoMetadata.VideoURL = aws.String(fmt.Sprintf("%s,%s", cfg.s3Bucket, key))
+	videoMetadata.VideoURL = aws.String(fmt.Sprintf("%s/%s", cfg.s3CfDistribution, key))
 	err = cfg.db.UpdateVideo(videoMetadata)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Failed to update video metadata", err)
 		return
 	}
-}
-
-func (cfg *apiConfig) generatePresignedURL(s3Client *s3.Client, bucket, key string, expireTime time.Duration) (string, error) {
-	preSignClient := s3.NewPresignClient(s3Client)
-	params := s3.GetObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	}
-	presignedURL, err := preSignClient.PresignGetObject(context.Background(), &params, s3.WithPresignExpires(expireTime))
-	if err != nil {
-		return "", err
-	}
-	return presignedURL.URL, nil
-}
-
-func (cfg *apiConfig) dbVideoToSignedVideo(video database.Video) (database.Video, error) {
-	if video.VideoURL == nil {
-		return video, nil
-	}
-	split := strings.Split(*video.VideoURL, ",")
-	if len(split) != 2 {
-		return video, fmt.Errorf("invalid video URL: %s", video.VideoURL)
-	}
-	bucket, key := split[0], split[1]
-	presignedURL, err := cfg.generatePresignedURL(cfg.s3Client, bucket, key, 5*time.Minute)
-	if err != nil {
-		return video, err
-	}
-	video.VideoURL = &presignedURL
-	return video, nil
 }
